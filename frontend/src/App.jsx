@@ -1,30 +1,54 @@
 import './App.css';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import EmployeeForm from './components/EmployeeForm.jsx';
+import {getAllEmployees, deleteEmployee} from './services/employeeService.js';
 function App() {
 
-  const [employee, setEmployee] = useState([{
-    id: "1",
-    name: "shivanshi",
-    email: "maheshwarishivanshi5@gmail.com",
-    department: "engineering",
-    joiningDate: "2026-07-17",
-    salary: 250000
-  },
-  {
-    id: "2",
-    name: "shivanshi",
-    email: "maheshwarishivanshi5@gmail.com",
-    department: "engineering",
-    joiningDate: "2026-07-17",
-    salary: 250000
-  }]);
 
-  const [showForm, setShowForm] = useState(false);
+  const [employee, setEmployee] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectDepartment, setSelectDepartment]=useState('ALL');
 
-  const handleEdit = () => {
-    setShowForm(true);
+  useEffect(() => {
+    getAllEmployees()
+      .then((response) => setEmployee(response.data))
+      .catch((error) => console.error('Failed to load employees:', error));
+  }, []);
+
+  const refreshData=()=>{
+    getAllEmployees()
+    .then((response)=>setEmployee(response.data))
+    .catch((error) => console.error('Failed to refresh employees:', error));;
   }
+  const [showForm, setShowForm] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+
+  const handleEdit = (emp) => {
+    setShowForm(true);
+    setSelectedEmployee(emp);
+  }
+
+  const handleDelete = async (id) => {
+    try{
+      await deleteEmployee(id);
+      refreshData();
+    }
+    catch(error){
+      console.error('Failed to delete employee:', error);
+    }    
+  }
+
+  const handleSearch = (e) =>{
+    setSearchTerm(e);
+  }
+  const filteredEmployees = employee.filter((emp) => {
+    const search = searchTerm.toLowerCase();
+
+    return (
+        emp.name.toLowerCase().includes(search) ||
+        emp.email.toLowerCase().includes(search)
+    );
+});
 
   return (
     <>
@@ -35,6 +59,8 @@ function App() {
           </h2>
         </section>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <input className ="search" type='search' placeholder="Search..." name="search"value={searchTerm} onChange={(e) => handleSearch(e.target.value)}>
+          </input>
           <button
             className="add-btn"
             type="button"
@@ -63,24 +89,44 @@ function App() {
 
             </thead>
             <tbody>
-              {employee.map((emp) => (
-                <tr className="table-rows" key={emp.id}>
-                  <td className="table-cells">{emp.id}</td>
-                  <td className="table-cells">{emp.name}</td>
-                  <td className="table-cells">{emp.email}</td>
-                  <td className="table-cells">{emp.department}</td>
-                  <td className="table-cells">{emp.joiningDate}</td>
-                  <td className="table-cells">{emp.salary}</td>
-                  <td className="table-cells"><button onClick={handleEdit}className="edit-btn">Edit</button><button className="delete-btn">Delete</button></td>
-                </tr>
-              ))}
-
-            </tbody>
+    {filteredEmployees.length > 0 ? (
+        filteredEmployees.map((emp) => (
+            <tr className="table-rows" key={emp.id}>
+                <td className="table-cells">{emp.id}</td>
+                <td className="table-cells">{emp.name}</td>
+                <td className="table-cells">{emp.email}</td>
+                <td className="table-cells">{emp.department}</td>
+                <td className="table-cells">{emp.joiningDate}</td>
+                <td className="table-cells">{emp.salary}</td>
+                <td className="table-cells">
+                    <button
+                        onClick={() => handleEdit(emp)}
+                        className="edit-btn"
+                    >
+                        Edit
+                    </button>
+                    <button
+                        className="delete-btn"
+                        onClick={() => handleDelete(emp.id)}
+                    >
+                        Delete
+                    </button>
+                </td>
+            </tr>
+        ))
+    ) : (
+        <tr>
+            <td colSpan="7" style={{ textAlign: "center" }}>
+                No employees found.
+            </td>
+        </tr>
+    )}
+</tbody>
 
           </table>
         </section>
         {showForm && (
-          <EmployeeForm onClose={()=>setShowForm(false)} />
+          <EmployeeForm onClose={() => { setShowForm(false); setSelectedEmployee(null); }} setEmployee={setEmployee} selectedEmployee={selectedEmployee} />
         )
 
         }
